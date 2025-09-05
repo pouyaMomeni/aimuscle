@@ -35,7 +35,7 @@ type Plan = {
 };
 
 type Answers = {
-  goal: "muscle" | "fatloss" | "endurance" | "" ;
+  goal: "muscle" | "fatloss" | "endurance" | "";
   experience: "beginner" | "intermediate" | "advanced" | "";
   days: number; // 1..7
   equipment: "none" | "dumbbells" | "fullgym" | "";
@@ -99,15 +99,15 @@ function generatePlan(a: Answers): Plan {
   const tier: Tier = isEmerald ? "emerald" : "free";
   const name =
     a.goal === "muscle" ? "Hypertrophy" :
-    a.goal === "fatloss" ? "Lean Cut" :
-    a.goal === "endurance" ? "Engine" : "Custom";
+      a.goal === "fatloss" ? "Lean Cut" :
+        a.goal === "endurance" ? "Engine" : "Custom";
 
   const vol = a.experience === "advanced" ? 5 : a.experience === "intermediate" ? 4 : 3;
   const sets = a.experience === "advanced" ? "5 x 8–10" : a.experience === "intermediate" ? "4 x 10–12" : "3 x 12–15";
   const cap = a.session <= 40 ? "8–10 min" : a.session <= 60 ? "10–12 min" : "12–15 min";
   const cue = a.goal === "muscle" ? "Controlled tempo, full ROM"
-            : a.goal === "fatloss" ? "Short rests, steady pace"
-            : "Smooth breathing, steady cadence";
+    : a.goal === "fatloss" ? "Short rests, steady pace"
+      : "Smooth breathing, steady cadence";
   const today: Exercise[] = [
     { id: "ex1", title: a.goal === "endurance" ? "Row / Bike" : "Goblet Squat", scheme: sets, cap, notes: cue },
     { id: "ex2", title: a.goal === "fatloss" ? "KB Swings" : "DB Bench Press", scheme: sets, cap, notes: cue },
@@ -154,7 +154,32 @@ export default function GeneratePlanPage() {
   const [step, setStep] = useState(0);
   const [ready, setReady] = useState(false);
 
-  const plan = useMemo(() => (ready ? generatePlan(answers) : null), [answers, ready]);
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchPlan(answers: Answers) {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/generate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(answers),
+      });
+      if (!res.ok) throw new Error("API error");
+      const data = (await res.json()) as Plan;
+      setPlan(data);
+      setReady(true);
+    } catch (e: any) {
+      setError(e?.message || "Failed to generate plan");
+      // optional fallback:
+      // setPlan(generatePlan(answers));
+      // setReady(true);
+    } finally {
+      setLoading(false);
+    }
+  }
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -332,11 +357,13 @@ export default function GeneratePlanPage() {
                     ) : (
                       <Button
                         size="sm"
-                        onClick={() => setReady(true)}
+                        onClick={() => fetchPlan(answers)}
+                        disabled={loading}
                         className="rounded-xl gap-2"
                       >
-                        Generate Plan <Dumbbell className="h-4 w-4" />
+                        {loading ? "Generating..." : "Generate Plan"} <Dumbbell className="h-4 w-4" />
                       </Button>
+
                     )}
                   </div>
                 </div>
@@ -362,7 +389,52 @@ export default function GeneratePlanPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!plan ? (
+            {loading && !plan ? (
+              <div className="space-y-6 animate-pulse">
+                <div className="flex gap-2">
+                  <div className="h-7 w-24 rounded-full bg-muted" />
+                  <div className="h-7 w-20 rounded-full bg-muted" />
+                  <div className="h-7 w-36 rounded-full bg-muted" />
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-3">
+                  <div className="md:col-span-2 space-y-3 rounded-xl border p-4">
+                    <div className="h-5 w-36 bg-muted rounded" />
+                    <div className="space-y-3">
+                      <div className="h-14 w-full bg-muted rounded-xl" />
+                      <div className="h-14 w-full bg-muted rounded-xl" />
+                      <div className="h-14 w-full bg-muted rounded-xl" />
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="h-4 w-40 bg-muted rounded" />
+                      <div className="flex gap-2">
+                        <div className="h-9 w-28 bg-muted rounded-xl" />
+                        <div className="h-9 w-28 bg-muted rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 rounded-xl border p-4">
+                    <div className="h-5 w-24 bg-muted rounded" />
+                    <div className="flex items-center gap-4">
+                      <div className="h-24 w-24 rounded-full bg-muted" />
+                      <div className="space-y-2">
+                        <div className="h-4 w-24 bg-muted rounded" />
+                        <div className="h-4 w-28 bg-muted rounded" />
+                      </div>
+                    </div>
+                    <div className="h-2 w-full bg-muted rounded" />
+                    <div className="h-4 w-44 bg-muted rounded" />
+                    <div className="h-10 w-full bg-muted rounded-xl" />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border p-4">
+                  <div className="h-5 w-48 bg-muted rounded mb-4" />
+                  <div className="h-10 w-full bg-muted rounded-xl" />
+                </div>
+              </div>
+            ) : !plan ? (
               <p className="text-sm text-muted-foreground">
                 Answer the questions to generate a personalized program. Your plan details will render here.
               </p>
@@ -405,7 +477,7 @@ export default function GeneratePlanPage() {
                         ))}
                       </ul>
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
-                        <div className="text-sm text-muted-foreground">Estimated time · {Math.max(25, Math.min(75, Math.round(plan.today.length * (plan.xpToNext/plan.xpToNext ? 10 : 10))))} min</div>
+                        <div className="text-sm text-muted-foreground">Estimated time · {Math.max(25, Math.min(75, Math.round(plan.today.length * (plan.xpToNext / plan.xpToNext ? 10 : 10))))} min</div>
                         <div className="flex items-center gap-3">
                           <Button variant="outline" className="rounded-xl gap-2"><PenLine className="h-4 w-4" /> Edit session</Button>
                           <Button className="rounded-xl gap-2">Start workout</Button>

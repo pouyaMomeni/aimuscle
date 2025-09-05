@@ -110,12 +110,13 @@ function UserMenu() {
 }
 
 
-function NavLinks({ onClick }: { onClick?: () => void }) {
-  // Show these routes to everyone; adjust if you want auth-gated.
+function NavLinks({ user, onClick }: { user?: User; onClick?: () => void }) {
+  if (!user) return null; // 🔒 hide until logged in
+
   const links = [
     { href: '/pricing', label: 'Pricing' },
     { href: '/my-plans', label: 'My Plans' },
-    { href: '/generate-plane', label: 'Generate Plane' },
+    { href: '/generate-plane', label: 'Generate Plan' }, // (typo? maybe /generate-plan)
   ];
 
   return (
@@ -125,7 +126,7 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
           key={l.href}
           href={l.href}
           onClick={onClick}
-          className="text-sm font-medium text-muted-foreground  hover:text-blue-400"
+          className="text-sm font-medium text-muted-foreground hover:text-blue-400"
         >
           {l.label}
         </Link>
@@ -134,7 +135,8 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
   );
 }
 
-function MobileNav() {
+
+function MobileNav({ user }: { user?: User }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -146,7 +148,6 @@ function MobileNav() {
       </SheetTrigger>
 
       <SheetContent side="left" className="w-[280px] p-4">
-        {/* A11y title (hidden visually, announced to screen readers) */}
         <SheetHeader>
           <VisuallyHidden>
             <SheetTitle>Navigation menu</SheetTitle>
@@ -158,9 +159,12 @@ function MobileNav() {
           <span className="text-lg font-semibold">AiMuscle</span>
         </div>
 
-        <nav className="flex flex-col gap-4">
-          <NavLinks onClick={() => setOpen(false)} />
-        </nav>
+        {/* 🔒 Only show links if logged in */}
+        {user && (
+          <nav className="flex flex-col gap-4">
+            <NavLinks user={user} onClick={() => setOpen(false)} />
+          </nav>
+        )}
 
         <div className="mt-6 border-t pt-4">
           <Suspense fallback={<div className="h-9" />}>
@@ -172,6 +176,7 @@ function MobileNav() {
   );
 }
 
+
 function Header() {
   const { data: user } = useSWR<User>('/api/user', fetcher);
 
@@ -180,7 +185,7 @@ function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         {/* Left: Mobile menu + Brand */}
         <div className="flex items-center gap-2">
-          <MobileNav />
+          <MobileNav user={user} />
           <Link href="/" className="flex items-center">
             <Dumbbell className="h-6 w-6 text-primary" />
             <span className="ml-2 text-xl font-semibold text-foreground">
@@ -189,10 +194,11 @@ function Header() {
           </Link>
         </div>
 
-        {/* Center/Right: Desktop nav + user */}
+        {/* Right: Desktop nav + user */}
         <div className="flex items-center space-x-6">
+          {/* 🔒 Only show links if logged in */}
           <div className="hidden md:flex items-center space-x-6">
-            <NavLinks />
+            <NavLinks user={user} />
           </div>
           <Suspense fallback={<div className="h-9" />}>
             <UserMenu />
@@ -202,6 +208,7 @@ function Header() {
     </header>
   );
 }
+
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
